@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Block City</title>
+    <link rel="stylesheet" href="./styles/app.css" />
+  </head>
+  <body>
+    <div id="appShell" class="app-shell" data-screen="menu" data-mode="foot" data-touch="false">
+      <canvas id="sceneCanvas"></canvas>
+      <div class="scene-vignette"></div>
+
+      <div class="hud">
+        <div class="top-left">
+          <div class="panel minimap-panel">
+            <div class="north-badge">N</div>
+            <canvas id="minimapCanvas"></canvas>
+          </div>
+          <div class="panel mission-panel">
+            <div class="mission-head">
+              <div id="missionIcon" class="mission-icon">PKG</div>
+              <div>
+                <div id="missionTitle" class="mission-title">PICK UP PACKAGE</div>
+                <div id="missionStage" class="prompt-detail">Street objective ready</div>
+              </div>
+            </div>
+            <div id="missionCopy" class="mission-copy">
+              Head to the marked location and tag the courier crate.
+            </div>
+            <div class="mission-meta">
+              <div id="missionStatus" class="mission-meta-chip">RUN BOARD</div>
+              <div id="missionReward" class="mission-meta-chip">+$350</div>
+              <div id="missionTimer" class="mission-meta-chip">FREE ROAM</div>
+            </div>
+            <div id="missionDistance" class="mission-distance">184m</div>
+          </div>
+        </div>
+
+        <div class="banner-bar">
+          <div id="districtBanner" class="banner-chip accent">Sunset Grid</div>
+          <div id="modeBanner" class="banner-chip">On Foot</div>
+          <div id="audioBanner" class="banner-chip">Tap To Arm Audio</div>
+        </div>
+
+        <div class="top-right">
+          <div class="cash-panel">
+            <div class="cash-label">Cash</div>
+            <div id="cashValue" class="cash-value">$2,450</div>
+          </div>
+          <div class="panel combat-panel">
+            <div class="combat-head">
+              <div id="weaponLabel" class="combat-label">CINDER-9</div>
+              <div id="weaponMode" class="combat-chip">HOLSTERED</div>
+            </div>
+            <div id="weaponAmmo" class="combat-ammo">8 / 40</div>
+            <div id="weaponStatus" class="combat-status">Slot 1 draws the sidearm. Click or tap Fire to shoot.</div>
+          </div>
+          <div class="panel heat-panel">
+            <div class="heat-label">Heat</div>
+            <div id="starRow" class="star-row">
+              <div class="star filled"></div>
+              <div class="star filled"></div>
+              <div class="star"></div>
+              <div class="star"></div>
+              <div class="star"></div>
+            </div>
+          </div>
+          <button id="pauseButton" class="pause-chip interactive" type="button">Pause</button>
+        </div>
+
+        <div class="bottom-left">
+          <div class="panel stats-panel">
+            <div class="stat-line">
+              <div class="stat-icon">H</div>
+              <div class="stat-track">
+                <div id="healthFill" class="stat-fill health"></div>
+              </div>
+              <div id="healthValue" class="stat-value">100/100</div>
+            </div>
+            <div class="stat-line">
+              <div class="stat-icon">S</div>
+              <div class="stat-track">
+                <div id="staminaFill" class="stat-fill stamina"></div>
+              </div>
+              <div id="staminaValue" class="stat-value">100/100</div>
+            </div>
+            <div class="stat-line">
+              <div class="stat-icon">R</div>
+              <div class="stat-track">
+                <div id="durabilityFill" class="stat-fill durability"></div>
+              </div>
+              <div id="durabilityValue" class="stat-value">96/100</div>
+            </div>
+          </div>
+          <div class="build-tag">Three.js browser build - local solo district</div>
+        </div>
+
+        <div class="bottom-center">
+          <div id="reticle" class="reticle" aria-hidden="true">
+            <div class="reticle-ring"></div>
+            <div class="reticle-cross horizontal"></div>
+            <div class="reticle-cross vertical"></div>
+          </div>
+          <div class="prompt-strip">
+            <div id="enterPrompt" class="prompt-chip">
+              <div class="keycap">E</div>
+              <div class="prompt-copy">
+                <div id="enterPromptName" class="prompt-name">Enter Ride</div>
+                <div id="enterPromptDetail" class="prompt-detail">Move closer to the parked sedan.</div>
+              </div>
+            </div>
+            <div id="interactPrompt" class="prompt-chip">
+              <div class="keycap">F</div>
+              <div class="prompt-copy">
+                <div id="interactPromptName" class="prompt-name">Interact</div>
+                <div id="interactPromptDetail" class="prompt-detail">Approach a mission light or live objective.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel quickbar">
+            <button id="slotOne" class="slot-button active interactive" type="button">
+              <span class="slot-number">1</span>
+              <span id="slotOneName" class="slot-name">Cinder-9</span>
+              <span id="slotOneDetail" class="slot-detail">Draw sidearm</span>
+            </button>
+            <button id="slotTwo" class="slot-button interactive" type="button">
+              <span class="slot-number">2</span>
+              <span id="slotTwoName" class="slot-name">Route Kit</span>
+              <span id="slotTwoDetail" class="slot-detail">Pulse line</span>
+            </button>
+            <button id="slotThree" class="slot-button interactive" type="button">
+              <span class="slot-number">3</span>
+              <span id="slotThreeName" class="slot-name">Horn</span>
+              <span id="slotThreeDetail" class="slot-detail">Street call</span>
+            </button>
+            <button id="slotFour" class="slot-button interactive" type="button">
+              <span class="slot-number">4</span>
+              <span id="slotFourName" class="slot-name">Reset</span>
+              <span id="slotFourDetail" class="slot-detail">Ride recover</span>
+            </button>
+            <button id="slotFive" class="slot-button interactive" type="button">
+              <span class="slot-number">5</span>
+              <span id="slotFiveName" class="slot-name">Garage</span>
+              <span id="slotFiveDetail" class="slot-detail">Safe ping</span>
+            </button>
+            <button id="inventoryButton" class="slot-button interactive" type="button">
+              <span class="slot-number">BAG</span>
+              <span class="slot-name">Field Bag</span>
+              <span class="slot-detail">Open kit</span>
+            </button>
+          </div>
+
+          <div class="desktop-hints">WASD / arrows move, Shift sprint, drag to look, E ride, F use, 1 draw, click or C fire, R reload, 2-5 street tools, B bag, Esc pause.</div>
+        </div>
+
+        <div class="bottom-right">
+          <div class="panel speed-shell">
+            <div class="speed-top">
+              <span>Speed</span>
+              <span id="speedModeCopy">On Foot</span>
+            </div>
+            <div class="speed-dial">
+              <div class="speed-ring-labels">
+                <span>20</span>
+                <span>60</span>
+                <span>100</span>
+                <span>140</span>
+                <span>180</span>
+                <span>200</span>
+              </div>
+              <div id="speedNeedle" class="speed-needle"></div>
+              <div class="speed-center">
+                <div id="speedValue" class="speed-value">0</div>
+                <div class="speed-unit">KM/H</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="touch-hud">
+          <div class="touch-cluster left">
+            <div class="touch-label" data-foot>Move</div>
+            <div class="touch-label" data-vehicle>Steer</div>
+            <div class="dpad">
+              <div class="blank"></div>
+              <button class="touch-control round interactive" type="button" data-touch-move="up">U</button>
+              <div class="blank"></div>
+              <button class="touch-control round interactive" type="button" data-touch-move="left">L</button>
+              <div class="blank"></div>
+              <button class="touch-control round interactive" type="button" data-touch-move="right">R</button>
+              <div class="blank"></div>
+              <button class="touch-control round interactive" type="button" data-touch-move="down">D</button>
+              <div class="blank"></div>
+            </div>
+          </div>
+
+          <div class="touch-cluster right">
+            <button id="lookPad" class="touch-control look-pad interactive" type="button">LOOK<br />DRAG</button>
+            <div class="touch-actions foot-actions">
+              <button id="touchRideButton" class="touch-control wide interactive" type="button">Ride</button>
+              <button id="touchInteractButton" class="touch-control wide interactive" type="button">Use</button>
+              <button id="touchFireButton" class="touch-control wide interactive" type="button">Fire</button>
+              <button id="touchPauseButton" class="touch-control wide interactive" type="button">Pause</button>
+            </div>
+            <div class="touch-actions vehicle-actions">
+              <button id="touchExitButton" class="touch-control wide interactive" type="button">Exit</button>
+              <button id="touchVehicleInteractButton" class="touch-control wide interactive" type="button">Use</button>
+              <button id="touchHandbrakeButton" class="touch-control wide interactive" type="button">Handbrake</button>
+              <button id="touchBrakeButton" class="touch-control wide interactive" type="button">Brake / Rev</button>
+              <button id="touchThrottleButton" class="touch-control wide interactive" type="button">Accelerate</button>
+              <button id="touchVehiclePauseButton" class="touch-control wide interactive" type="button">Pause</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section id="menuScreen" class="screen visible">
+        <div class="screen-card menu">
+          <div>
+            <p class="screen-kicker">Sunset-noir Three.js city slice</p>
+            <h1 class="menu-title">BLOCK CITY</h1>
+            <p class="menu-copy">
+              Step into a warm low-poly city slice with persisted district selection, shared desktop and touch
+              controls, local-first settings, and a real Three.js streetscape behind the HUD.
+            </p>
+            <div class="menu-actions">
+              <button id="menuDistrictButton" class="action-button interactive" type="button">Select District</button>
+              <button id="quickDeployButton" class="action-button alt interactive" type="button">Deploy Saved Run</button>
+              <button id="menuSettingsButton" class="action-button alt interactive" type="button">Settings</button>
+            </div>
+          </div>
+
+          <div class="status-card">
+            <h3>Current District State</h3>
+            <div class="status-grid">
+              <div class="status-item">
+                <div class="status-label">Default district</div>
+                <div id="menuDistrictValue" class="status-value">Sunset Grid</div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">Theme</div>
+                <div id="menuThemeValue" class="status-value">Amber avenue</div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">Saved audio</div>
+                <div id="menuAudioValue" class="status-value">65% live</div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">Touch layout</div>
+                <div id="menuTouchValue" class="status-value">Split</div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">Graphics</div>
+                <div id="menuGraphicsValue" class="status-value">AUTO</div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">Mode</div>
+                <div id="menuModeValue" class="status-value">Local solo only</div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">Seed</div>
+                <div id="menuSeedValue" class="status-value">SG-041</div>
+              </div>
+            </div>
+            <p class="helper-copy">
+              Multiplayer is intentionally omitted in this build. Local single-player remains fully playable from a
+              normal static server on desktop and touch devices.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="districtScreen" class="screen">
+        <div class="screen-card">
+          <div class="screen-header">
+            <div class="screen-header-copy">
+              <p class="screen-kicker">District catalog</p>
+              <h2>Select A District</h2>
+              <p>
+                Every district includes a seed, spawn point, vehicle stashes, mission markers, landmarks, and a
+                minimap-ready street preview. The game persists your latest pick and uses it on the next clean load.
+              </p>
+            </div>
+            <button id="districtBackButton" class="action-button alt interactive" type="button">Back</button>
+          </div>
+          <div id="districtGrid" class="district-grid"></div>
+          <div class="screen-footer">
+            <div id="districtFooterCopy" class="screen-footer-copy">
+              Sunset Grid stays tuned as the first complete sandbox slice while the other routes remain selectable in
+              the district roster.
+            </div>
+            <div class="menu-actions" style="margin-top: 0;">
+              <button id="launchDistrictButton" class="action-button interactive" type="button">Launch District</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="pauseScreen" class="screen">
+        <div class="screen-card" style="max-width: 460px;">
+          <div class="screen-header-copy">
+            <p class="screen-kicker">Pause</p>
+            <h2>Session Hold</h2>
+            <p>Resume the run, reset the district spawn, or jump back to the district catalog without reloading the page.</p>
+          </div>
+          <div class="menu-actions">
+            <button id="resumeButton" class="action-button interactive" type="button">Resume</button>
+            <button id="pauseSettingsButton" class="action-button alt interactive" type="button">Settings</button>
+            <button id="resetShellButton" class="action-button alt interactive" type="button">Reset Run</button>
+            <button id="returnDistrictButton" class="action-button alt interactive" type="button">Return To Districts</button>
+          </div>
+        </div>
+      </section>
+
+      <aside id="settingsDrawer" class="drawer panel">
+        <div class="drawer-header">
+          <h3>Run Settings</h3>
+          <button id="closeSettingsButton" class="drawer-close interactive" type="button">Close</button>
+        </div>
+
+        <div class="setting-group">
+          <label for="volumeSlider">UI and engine volume</label>
+          <div class="range-row">
+            <input id="volumeSlider" class="interactive" type="range" min="0" max="100" step="1" value="65" />
+            <div id="volumeValue" class="setting-value">65%</div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <span>Audio mute</span>
+          <div class="toggle-row">
+            <button id="muteToggle" class="pill-button interactive" type="button">Live</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label for="sensitivitySlider">Look sensitivity</label>
+          <div class="range-row">
+            <input id="sensitivitySlider" class="interactive" type="range" min="40" max="160" step="5" value="85" />
+            <div id="sensitivityValue" class="setting-value">0.85x</div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <span>Invert look</span>
+          <div class="toggle-row">
+            <button id="invertToggle" class="pill-button interactive" type="button">Standard</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <span>Touch layout</span>
+          <div id="touchLayoutButtons" class="segmented">
+            <button class="pill-button interactive" type="button" data-touch-layout="split">Split</button>
+            <button class="pill-button interactive" type="button" data-touch-layout="southpaw">Southpaw</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <span>Graphics quality</span>
+          <div id="graphicsButtons" class="segmented">
+            <button class="pill-button interactive" type="button" data-graphics-quality="auto">Auto</button>
+            <button class="pill-button interactive" type="button" data-graphics-quality="high">High</button>
+            <button class="pill-button interactive" type="button" data-graphics-quality="low">Low</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <span>Session mode</span>
+          <div class="setting-chip">Local solo only</div>
+          <p class="helper-copy">
+            Multiplayer is intentionally omitted in this build, so no inert matchmaking control is shown. The static
+            browser build always falls back to local play.
+          </p>
+        </div>
+
+        <div class="setting-group">
+          <button id="resetSettingsButton" class="action-button alt interactive" type="button">Restore Defaults</button>
+          <p class="helper-copy">
+            The latest selected district plus every surfaced preference here are saved locally. Empty storage falls
+            back to sensible defaults without blocking local play.
+          </p>
+        </div>
+      </aside>
+
+      <aside id="inventoryDrawer" class="drawer panel">
+        <div class="drawer-header">
+          <h3>Field Bag</h3>
+          <button id="closeInventoryButton" class="drawer-close interactive" type="button">Close</button>
+        </div>
+        <div class="inventory-list">
+          <div class="inventory-item">
+            <h4>Cinder-9 Sidearm</h4>
+            <p>Slot 1 draws the sidearm on foot. Drag or look to line the shot, fire with click or tap, and keep an eye on the honest clip and reserve count.</p>
+          </div>
+          <div class="inventory-item">
+            <h4>Route Kit</h4>
+            <p>Refreshes the mission line and pulses the objective marker so the next turn or contract light reads clearly from both the street and minimap.</p>
+          </div>
+          <div class="inventory-item">
+            <h4>Street Tools</h4>
+            <p>Horn, ride reset, and garage ping stay live during free roam so no quickbar slot is inert, while hot shots and bad collisions both push the heat grid higher.</p>
+          </div>
+          <div class="inventory-item">
+            <h4>Dispatch Notes</h4>
+            <p>Green or amber contract lights start repeatable runs, timed dash jobs must be driven through live gates, and red search zones mean the heat sweep is closing on the block.</p>
+          </div>
+        </div>
+      </aside>
+
+      <div id="toast" class="toast"></div>
+      <div id="audioNotice" class="audio-notice">Tap or click once to arm browser audio.</div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
