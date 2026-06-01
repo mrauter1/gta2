@@ -1,6 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.166.0/build/three.module.js";
 import { getDistrictWorldLayout, getReactiveActorPose } from "../data/world-layout.js";
-import { getActiveObjectivePoint, getDistrictById, isNearVehicle } from "../state/game-state.js";
+import { getActiveObjectivePoint, getClaimedVehicleIds, getDistrictById, getNearestEnterableVehicle } from "../state/game-state.js";
 import { damp } from "../utils/math.js";
 
 const MAP_SIZE = 1000;
@@ -702,7 +702,7 @@ export function createWorldRenderer(canvas) {
   scene.add(worldRoot);
 
   const playerGroup = createPlayerModel();
-  playerGroup.scale.setScalar(0.64);
+  playerGroup.scale.setScalar(0.46);
   worldRoot.add(playerGroup);
 
   let heroVehicleRoot = new THREE.Group();
@@ -761,6 +761,7 @@ export function createWorldRenderer(canvas) {
   let activeQuality = null;
   const trafficActors = [];
   const pedestrianActors = [];
+  const staticVehicleActors = [];
   const markerActors = [];
 
   function replaceHeroVehicle(type, color) {
@@ -784,6 +785,7 @@ export function createWorldRenderer(canvas) {
     worldRoot.add(districtGroup);
     trafficActors.length = 0;
     pedestrianActors.length = 0;
+    staticVehicleActors.length = 0;
     markerActors.length = 0;
   }
 
@@ -914,6 +916,7 @@ export function createWorldRenderer(canvas) {
       mesh.position.copy(mapToWorld(vehicle, 0));
       mesh.rotation.y = -vehicle.angle;
       districtGroup.add(mesh);
+      staticVehicleActors.push({ config: vehicle, mesh });
     });
     buildStreetlights(district);
     buildHomeAndMarkers(district);
@@ -1034,14 +1037,16 @@ export function createWorldRenderer(canvas) {
     heroVehicleRoot.rotation.y = -state.session.vehicle.angle;
     heroVehicleRoot.rotation.z = state.session.ui.collisionPulseTimer > 0 ? Math.sin(elapsed * 32) * 0.02 : 0;
 
-    vehicleAura.position.copy(vehiclePosition);
-    vehicleAura.visible = state.session.mode !== "vehicle" && isNearVehicle(state) && !state.session.failureState;
+    const nearestVehicle = getNearestEnterableVehicle(state);
+    vehicleAura.position.copy(mapToWorld(nearestVehicle || state.session.vehicle, 0));
+    vehicleAura.visible = state.session.mode !== "vehicle" && Boolean(nearestVehicle) && !state.session.failureState;
     vehicleAura.material.opacity = 0.45 + Math.sin(elapsed * 6) * 0.18;
 
     trafficActors.forEach((actor) => {
       const pose = getReactiveActorPose(actor.config, state.session.clock, state.session.combat.actorReactions);
       actor.mesh.position.copy(mapToWorld(pose, 0));
       actor.mesh.rotation.y = -pose.angle;
+      actor.mesh.visible = !pose.hidden;
       if (actor.lightBar) {
         const alertTimer = state.session.combat.actorReactions?.[actor.config.id]?.alertTimer || 0;
         actor.lightBar.material.emissiveIntensity = alertTimer > 0 || state.session.combat.patrolAlertTimer > 0 || state.session.ui.heat >= 3
@@ -1059,6 +1064,11 @@ export function createWorldRenderer(canvas) {
       actor.mesh.position.copy(mapToWorld(pose, 0));
       actor.mesh.rotation.y = -pose.angle + Math.PI * 0.5;
       actor.mesh.position.y = 0.5 + Math.abs(Math.sin(elapsed * 5 + index)) * 0.4;
+    });
+
+    const claimedVehicleIds = getClaimedVehicleIds(state);
+    staticVehicleActors.forEach((actor) => {
+      actor.mesh.visible = !claimedVehicleIds.has(actor.config.id);
     });
 
     const inVehicle = state.session.mode === "vehicle";

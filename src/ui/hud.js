@@ -3,13 +3,13 @@ import {
   getActiveObjectivePoint,
   getCurrentPosition,
   getDistrictById,
+  getNearestEnterableVehicle,
   getMissionScript,
   getMissionStage,
   getMissionTimer,
   getNearbyMissionContact,
   hasActiveMission,
   isNearObjective,
-  isNearVehicle,
 } from "../state/game-state.js";
 import { distance2D } from "../utils/math.js";
 
@@ -433,17 +433,18 @@ export function renderHud(elements, state, audioArmed) {
   elements.durabilityFill.style.width = `${state.session.vehicle.durability}%`;
   elements.durabilityValue.textContent = `${Math.round(state.session.vehicle.durability)}/100`;
 
+  const nearestVehicle = getNearestEnterableVehicle(state);
   if (state.session.mode === "vehicle") {
     elements.enterPromptName.textContent = "Exit Ride";
     elements.enterPromptDetail.textContent = "Drop back to street control.";
     elements.enterPrompt.classList.remove("disabled");
-  } else if (isNearVehicle(state)) {
+  } else if (nearestVehicle) {
     elements.enterPromptName.textContent = "Enter Ride";
-    elements.enterPromptDetail.textContent = `${state.session.vehicle.label} is in reach.`;
+    elements.enterPromptDetail.textContent = `${nearestVehicle.label} is in reach.`;
     elements.enterPrompt.classList.remove("disabled");
   } else {
     elements.enterPromptName.textContent = "Ride Locked";
-    elements.enterPromptDetail.textContent = `Move closer to the ${state.session.vehicle.label.toLowerCase()}.`;
+    elements.enterPromptDetail.textContent = "Move closer to any car.";
     elements.enterPrompt.classList.add("disabled");
   }
 

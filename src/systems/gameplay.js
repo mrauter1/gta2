@@ -9,6 +9,7 @@ import {
   getMissionPointById,
   getMissionScript,
   getMissionStage,
+  getNearestEnterableVehicle,
   getVehicleSpawnProfile,
   hasActiveMission,
   isNearObjective,
@@ -584,7 +585,7 @@ function alertNearbyPatrol(session, layout, origin, radius, duration = 3.6) {
 function createShotCastCircles(state, layout, dynamicActors) {
   return [
     ...dynamicActors,
-    ...layout.staticVehicleColliders.map((vehicle) => ({
+    ...getStaticVehicleBlockers(layout, state.session).map((vehicle) => ({
       ...vehicle,
       kind: "static-vehicle",
     })),
@@ -680,6 +681,15 @@ function buildDynamicCircleBlockers(layout, session) {
   }));
 }
 
+function getClaimedVehicleIdSet(session) {
+  return new Set(session.claimedVehicleIds || []);
+}
+
+function getStaticVehicleBlockers(layout, session) {
+  const claimedIds = getClaimedVehicleIdSet(session);
+  return layout.staticVehicleColliders.filter((vehicle) => !claimedIds.has(vehicle.id));
+}
+
 function isPointInsidePlayArea(point) {
   return point.x >= WORLD_PLAY_AREA.minX
     && point.x <= WORLD_PLAY_AREA.maxX
@@ -720,7 +730,7 @@ function snapVehicleToSafeSpawn(session, district, layout, spawnIndex, durabilit
     session.vehicle,
     VEHICLE_RADIUS,
     layout.rectBlockers,
-    [...layout.circleBlockers, ...layout.staticVehicleColliders],
+    [...layout.circleBlockers, ...getStaticVehicleBlockers(layout, session)],
     {
       distances: [0, 18, 32, 48, 64],
     }
@@ -763,7 +773,7 @@ function stabilizeSessionPlacement(session) {
     session.player,
     PLAYER_RADIUS,
     layout.rectBlockers,
-    [...layout.circleBlockers, ...layout.staticVehicleColliders, ...buildDynamicCircleBlockers(layout, session), {
+    [...layout.circleBlockers, ...getStaticVehicleBlockers(layout, session), ...buildDynamicCircleBlockers(layout, session), {
       id: "hero-vehicle",
       kind: "vehicle",
       x: session.vehicle.x,
@@ -1044,7 +1054,7 @@ function updateRespawnState(state, events, deltaSeconds) {
     district.spawnPoint,
     PLAYER_RADIUS,
     layout.rectBlockers,
-    [...layout.circleBlockers, ...layout.staticVehicleColliders, {
+    [...layout.circleBlockers, ...getStaticVehicleBlockers(layout, state.session), {
       id: "hero-vehicle",
       kind: "vehicle",
       x: state.session.vehicle.x,
@@ -1296,7 +1306,7 @@ export function toggleVehicle(state) {
   const district = getDistrictById(state.session.districtId);
   const layout = getDistrictWorldLayout(district);
   const dynamicBlockers = buildDynamicCircleBlockers(layout, state.session);
-  const staticExitBlockers = [...layout.circleBlockers, ...layout.staticVehicleColliders, {
+  const staticExitBlockers = [...layout.circleBlockers, ...getStaticVehicleBlockers(layout, state.session), {
     id: "hero-vehicle",
     kind: "vehicle",
     x: vehicle.x,
@@ -1334,9 +1344,10 @@ export function toggleVehicle(state) {
     };
   }
 
-  if (!isNearVehicle(state)) {
+  const enterableVehicle = getNearestEnterableVehicle(state);
+  if (!enterableVehicle) {
     return {
-      toast: "Move closer to the parked ride",
+      toast: "Move closer to a ride",
       tone: { frequency: 220, duration: 0.05, type: "square" },
     };
   }
@@ -1345,12 +1356,35 @@ export function toggleVehicle(state) {
   state.session.combat.equipped = false;
   state.session.combat.pendingReload = false;
   state.session.combat.reloadTimer = 0;
-  player.x = vehicle.x;
-  player.y = vehicle.y;
-  player.angle = vehicle.angle;
-  vehicle.speed = 0;
+  if (enterableVehicle.source !== "hero") {
+    state.session.claimedVehicleIds ||= [];
+    if (!state.session.claimedVehicleIds.includes(enterableVehicle.id)) {
+      state.session.claimedVehicleIds.push(enterableVehicle.id);
+    }
+    if (enterableVehicle.source === "traffic") {
+      setActorReaction(state.session, enterableVehicle.id, { hideTimer: 9999 });
+      state.session.ui.heat = clamp(state.session.ui.heat + (enterableVehicle.type === "patrol" ? 1.2 : 0.35), 0, 5);
+    }
+  }
+  state.session.vehicle = {
+    ...state.session.vehicle,
+    spawnIndex: -1,
+    x: enterableVehicle.x,
+    y: enterableVehicle.y,
+    angle: enterableVehicle.angle,
+    speed: enterableVehicle.speed,
+    durability: enterableVehicle.durability,
+    type: enterableVehicle.type,
+    color: enterableVehicle.color,
+    label: enterableVehicle.label,
+  };
+  player.x = state.session.vehicle.x;
+  player.y = state.session.vehicle.y;
+  player.angle = state.session.vehicle.angle;
+  state.session.ui.cameraYaw = state.session.vehicle.angle;
+  state.session.vehicle.speed = 0;
   return {
-    toast: `Entered ${vehicle.label.toLowerCase()}`,
+    toast: `${enterableVehicle.source === "hero" ? "Entered" : "Jacked"} ${state.session.vehicle.label.toLowerCase()}`,
     tone: { frequency: 620, duration: 0.05, type: "sawtooth" },
   };
 }
@@ -1488,9 +1522,10 @@ export function applySimulation(state, deltaSeconds) {
   if (session.mode === "foot") {
     const magnitude = Math.hypot(strafe, forward);
     const moveSpeed = sprint ? 164 : 112;
+    const viewYaw = getViewHeading(session);
     const footCircleBlockers = [
       ...layout.circleBlockers,
-      ...layout.staticVehicleColliders,
+      ...getStaticVehicleBlockers(layout, session),
       ...dynamicCircleBlockers,
       {
         id: "hero-vehicle",
@@ -1500,9 +1535,9 @@ export function applySimulation(state, deltaSeconds) {
         radius: VEHICLE_RADIUS,
       },
     ];
+    player.angle = viewYaw;
 
     if (magnitude > 0) {
-      const viewYaw = getViewHeading(session);
       const inputX = (Math.cos(viewYaw) * forward - Math.sin(viewYaw) * strafe) / magnitude;
       const inputY = (Math.sin(viewYaw) * forward + Math.cos(viewYaw) * strafe) / magnitude;
       const desiredX = player.x + inputX * moveSpeed * deltaSeconds;
@@ -1518,16 +1553,12 @@ export function applySimulation(state, deltaSeconds) {
 
       player.x = resolved.x;
       player.y = resolved.y;
-      player.angle = Math.atan2(inputY, inputX);
       player.stamina = clamp(player.stamina - (sprint ? 18 : 7) * deltaSeconds, 22, 100);
       session.ui.speedDisplay = Math.round(moveSpeed * 0.08);
     } else {
       const settled = resolveMovement(player, player.x, player.y, PLAYER_RADIUS, layout.rectBlockers, footCircleBlockers);
       player.x = settled.x;
       player.y = settled.y;
-      if (session.combat.equipped) {
-        player.angle = getAimAngle(session);
-      }
       player.stamina = clamp(player.stamina + 15 * deltaSeconds, 0, 100);
       session.ui.speedDisplay = 0;
     }
@@ -1540,7 +1571,7 @@ export function applySimulation(state, deltaSeconds) {
     const steer = (moveRight ? 1 : 0) - (moveLeft ? 1 : 0);
     const previousX = vehicle.x;
     const previousY = vehicle.y;
-    const vehicleBlockers = [...layout.circleBlockers, ...layout.staticVehicleColliders, ...dynamicCircleBlockers];
+    const vehicleBlockers = [...layout.circleBlockers, ...getStaticVehicleBlockers(layout, session), ...dynamicCircleBlockers];
     const overlapAtStart = getOverlappingBlockers(previousX, previousY, VEHICLE_RADIUS, layout.rectBlockers, vehicleBlockers);
     const startingOverlapIds = new Set(overlapAtStart.map((blocker) => blocker.id));
     const steerFactor = 1.8 - Math.min(Math.abs(vehicle.speed) / 120, 1) * 1.08;

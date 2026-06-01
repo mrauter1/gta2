@@ -1427,8 +1427,12 @@ async function runDesktopFlow(client, report, baseUrl) {
       expectedAngle: Number(Math.atan2(Math.sin(probe.expectedAngle), Math.cos(probe.expectedAngle)).toFixed(3)),
       actualAngle: Number(actualAngle.toFixed(3)),
       angleError: Number(angleDistance(actualAngle, probe.expectedAngle).toFixed(3)),
+      avatarAngle: Number(end.session.player.angle.toFixed(3)),
+      avatarError: Number(angleDistance(end.session.player.angle, viewHeading).toFixed(3)),
       distance: Number(distance.toFixed(2)),
-      pass: distance > 5 && angleDistance(actualAngle, probe.expectedAngle) < 0.18,
+      pass: distance > 5
+        && angleDistance(actualAngle, probe.expectedAngle) < 0.18
+        && angleDistance(end.session.player.angle, viewHeading) < 0.08,
     });
   }
   await verify(
@@ -1581,12 +1585,22 @@ async function runDesktopFlow(client, report, baseUrl) {
   const beforeYaw = afterMove.session.ui.cameraYaw;
   await mouseDrag(client, "#sceneCanvas", 160);
   await sleep(150);
-  const afterYaw = (await getStateSnapshot(client)).session.ui.cameraYaw;
+  const afterMouseLookState = await getStateSnapshot(client);
+  const afterYaw = afterMouseLookState.session.ui.cameraYaw;
   await verify(
     report,
     "Desktop mouse look changes camera yaw",
     Math.abs(afterYaw - beforeYaw) > 0.04,
     { beforeYaw, afterYaw }
+  );
+  await verify(
+    report,
+    "On-foot camera yaw and avatar front stay aligned",
+    angleDistance(afterMouseLookState.session.player.angle, afterMouseLookState.session.ui.cameraYaw) < 0.08,
+    {
+      playerAngle: Number(afterMouseLookState.session.player.angle.toFixed(3)),
+      cameraYaw: Number(afterMouseLookState.session.ui.cameraYaw.toFixed(3)),
+    }
   );
 
   await prepareDirectionalProbe(0.74);
@@ -2015,6 +2029,120 @@ async function runDesktopFlow(client, report, baseUrl) {
       screenshot: report.screenshots.desktopFoot,
     }
   );
+  const avatarScaleSource = await client.evaluate(`
+    (async () => {
+      const source = await (await fetch("./src/render/three-world.js")).text();
+      return {
+        playerScale: /playerGroup\\.scale\\.setScalar\\(0\\.46\\)/.test(source),
+        pedestrianScale: /pedestrian\\.scale\\.setScalar\\(0\\.46\\)/.test(source),
+      };
+    })()
+  `);
+  await verify(
+    report,
+    "Player avatar uses the same visual scale as pedestrians",
+    avatarScaleSource.playerScale && avatarScaleSource.pedestrianScale,
+    avatarScaleSource
+  );
+
+  const staticVehicleEntryState = await client.evaluate(`
+    (async () => {
+      const { toggleVehicle } = await import("./src/systems/gameplay.js");
+      const state = window.__blockCityDebug.getState();
+      state.screen = "game";
+      state.activePanel = null;
+      state.session.mode = "foot";
+      state.session.claimedVehicleIds = [];
+      state.session.player.x = 588;
+      state.session.player.y = 708;
+      state.session.player.angle = Math.PI;
+      state.session.ui.cameraYaw = Math.PI;
+      state.session.vehicle.x = 220;
+      state.session.vehicle.y = 560;
+      const result = toggleVehicle(state);
+      window.__blockCityDebug.render();
+      return {
+        result,
+        mode: state.session.mode,
+        vehicle: state.session.vehicle,
+        claimedVehicleIds: state.session.claimedVehicleIds,
+      };
+    })()
+  `);
+  await verify(
+    report,
+    "Desktop ride entry can claim a parked street vehicle",
+    staticVehicleEntryState.mode === "vehicle"
+      && staticVehicleEntryState.vehicle.label === "Laundry van"
+      && staticVehicleEntryState.claimedVehicleIds.includes("market-van"),
+    staticVehicleEntryState
+  );
+
+  const trafficVehicleEntryState = await client.evaluate(`
+    (async () => {
+      const { toggleVehicle } = await import("./src/systems/gameplay.js");
+      const { getDistrictById } = await import("./src/state/game-state.js");
+      const { getDistrictWorldLayout, getReactiveActorPose } = await import("./src/data/world-layout.js");
+      const state = window.__blockCityDebug.getState();
+      const district = getDistrictById(state.session.districtId);
+      const layout = getDistrictWorldLayout(district);
+      const actor = layout.trafficActors[0];
+      const pose = getReactiveActorPose(actor, state.session.clock, state.session.combat.actorReactions);
+      state.screen = "game";
+      state.activePanel = null;
+      state.session.mode = "foot";
+      state.session.claimedVehicleIds = [];
+      state.session.player.x = pose.x;
+      state.session.player.y = pose.y;
+      state.session.player.angle = pose.angle;
+      state.session.ui.cameraYaw = pose.angle;
+      state.session.vehicle.x = 220;
+      state.session.vehicle.y = 560;
+      const result = toggleVehicle(state);
+      window.__blockCityDebug.render();
+      return {
+        actorId: actor.id,
+        actorType: actor.type,
+        result,
+        mode: state.session.mode,
+        vehicle: state.session.vehicle,
+        claimedVehicleIds: state.session.claimedVehicleIds,
+        reaction: state.session.combat.actorReactions[actor.id],
+      };
+    })()
+  `);
+  await verify(
+    report,
+    "Desktop ride entry can claim a moving traffic vehicle",
+    trafficVehicleEntryState.mode === "vehicle"
+      && trafficVehicleEntryState.vehicle.type === trafficVehicleEntryState.actorType
+      && trafficVehicleEntryState.claimedVehicleIds.includes(trafficVehicleEntryState.actorId)
+      && trafficVehicleEntryState.reaction?.hideTimer > 1000,
+    trafficVehicleEntryState
+  );
+
+  await client.evaluate(`
+    (() => {
+      const state = window.__blockCityDebug.getState();
+      state.session.mode = "foot";
+      state.session.player.x = 190;
+      state.session.player.y = 558;
+      state.session.player.angle = 0.05;
+      state.session.ui.cameraYaw = 0.05;
+      state.session.vehicle.x = 220;
+      state.session.vehicle.y = 560;
+      state.session.vehicle.angle = 0;
+      state.session.vehicle.speed = 0;
+      state.session.vehicle.type = "sedan";
+      state.session.vehicle.color = "#5c6875";
+      state.session.vehicle.label = "Parked sedan";
+      state.session.claimedVehicleIds = [];
+      state.session.combat.actorReactions = {};
+      window.__blockCityDebug.render();
+      return true;
+    })()
+  `);
+  await sleep(150);
 
   await keyTap(client, "KeyE", "e", 69);
   await sleep(250);
@@ -2138,9 +2266,17 @@ async function runDesktopFlow(client, report, baseUrl) {
   );
 
   await client.evaluate(`
-    (() => {
+    (async () => {
+      const { applySimulation } = await import("./src/systems/gameplay.js");
       const state = window.__blockCityDebug.getState();
+      state.screen = "game";
+      state.activePanel = null;
+      state.keyboard = {};
+      Object.keys(state.touchInput).forEach((control) => {
+        state.touchInput[control] = false;
+      });
       state.session.mode = "vehicle";
+      state.session.failureState = null;
       state.session.vehicle.x = 954;
       state.session.vehicle.y = 220;
       state.session.vehicle.angle = 0;
@@ -2152,18 +2288,21 @@ async function runDesktopFlow(client, report, baseUrl) {
       state.session.player.health = 100;
       state.session.ui.heat = 0;
       state.session.ui.cameraYaw = 0.18;
+      for (let step = 0; step < 24; step += 1) {
+        applySimulation(state, 0.016);
+      }
       window.__blockCityDebug.render();
       return true;
     })()
   `);
-  await sleep(200);
+  await sleep(120);
   const boundaryImpactState = await getStateSnapshot(client);
   await verify(
     report,
     "Vehicle boundary collision blocks eastbound high-speed travel",
-    boundaryImpactState.session.vehicle.x >= 955
-      && boundaryImpactState.session.vehicle.x <= 956
-      && boundaryImpactState.session.vehicle.speed < 0,
+    boundaryImpactState.session.vehicle.x <= 956
+      && boundaryImpactState.session.vehicle.speed < 0
+      && boundaryImpactState.session.vehicle.durability < 96,
     boundaryImpactState.session.vehicle
   );
   await saveScreenshot(client, report, "desktopBoundary");

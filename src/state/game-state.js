@@ -1,4 +1,5 @@
 import { DISTRICTS } from "../data/districts.js";
+import { getDistrictWorldLayout, getReactiveActorPose } from "../data/world-layout.js";
 import { distance2D } from "../utils/math.js";
 
 export const STORAGE_KEYS = ["block-city-shell-v2", "block-city-shell-v1"];
@@ -305,6 +306,7 @@ export function buildSession(districtId) {
     missionTimer: 0,
     searchZones: createSearchZones(district),
     combat: buildCombatState(),
+    claimedVehicleIds: [],
   };
 }
 
@@ -429,7 +431,82 @@ export function getCurrentPosition(state) {
 }
 
 export function isNearVehicle(state) {
-  return distance2D(state.session.player, state.session.vehicle) < 54;
+  return Boolean(getNearestEnterableVehicle(state));
+}
+
+export function getClaimedVehicleIds(state) {
+  return new Set(state.session.claimedVehicleIds || []);
+}
+
+export function getNearestEnterableVehicle(state, maxDistance = 54) {
+  if (!state?.session || state.session.mode !== "foot") {
+    return null;
+  }
+
+  const claimedIds = getClaimedVehicleIds(state);
+  const district = getDistrictById(state.session.districtId);
+  const layout = getDistrictWorldLayout(district);
+  const reactions = state.session.combat?.actorReactions || {};
+  const candidates = [{
+    source: "hero",
+    id: "hero-vehicle",
+    x: state.session.vehicle.x,
+    y: state.session.vehicle.y,
+    angle: state.session.vehicle.angle,
+    speed: state.session.vehicle.speed,
+    durability: state.session.vehicle.durability,
+    type: state.session.vehicle.type,
+    color: state.session.vehicle.color,
+    label: state.session.vehicle.label,
+  }];
+
+  layout.staticVehicles.forEach((vehicle) => {
+    if (claimedIds.has(vehicle.id)) {
+      return;
+    }
+    candidates.push({
+      source: "static",
+      id: vehicle.id,
+      x: vehicle.x,
+      y: vehicle.y,
+      angle: vehicle.angle,
+      speed: 0,
+      durability: 88,
+      type: vehicle.type,
+      color: vehicle.color,
+      label: vehicle.label,
+    });
+  });
+
+  layout.trafficActors.forEach((actor) => {
+    const pose = getReactiveActorPose(actor, state.session.clock, reactions);
+    if (pose.hidden || claimedIds.has(actor.id)) {
+      return;
+    }
+    candidates.push({
+      source: "traffic",
+      id: actor.id,
+      x: pose.x,
+      y: pose.y,
+      angle: pose.angle,
+      speed: 0,
+      durability: actor.type === "patrol" ? 92 : 86,
+      type: actor.type,
+      color: actor.color,
+      label: actor.type === "patrol" ? "Patrol cruiser" : actor.type === "taxi" ? "Taxi cab" : `${actor.type} traffic`,
+    });
+  });
+
+  return candidates.reduce((nearest, candidate) => {
+    const distance = distance2D(state.session.player, candidate);
+    if (distance > maxDistance) {
+      return nearest;
+    }
+    if (!nearest || distance < nearest.distance) {
+      return { ...candidate, distance };
+    }
+    return nearest;
+  }, null);
 }
 
 export function isNearObjective(state) {
