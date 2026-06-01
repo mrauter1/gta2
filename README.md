@@ -150,7 +150,7 @@ Generated validation artifacts, screenshots, logs, the local reference image, an
 
 ## Render Deployment
 
-The live Render static site uses `SITE_TGZ_B64` as a build-time environment variable containing the validated static app archive. The build command unpacks that archive into `public/`, and Render serves `public/`.
+The live Render static site builds from the committed source. The build command copies `index.html`, `src/`, and `styles/` into `public/`, and Render serves `public/`.
 
 ## Known Limitations
 

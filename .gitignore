@@ -19,3 +19,4 @@ validation/artifacts/
 validation/logs/
 validation/screenshots/
 deploy-site.tgz.b64
+deploy-site.tgz.b64.part-*

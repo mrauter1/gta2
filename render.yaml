@@ -4,6 +4,6 @@ services:
     runtime: static
     repo: https://github.com/mrauter1/gta2
     branch: main
-    buildCommand: "mkdir -p public && printf '%s' \"$SITE_TGZ_B64\" | base64 -d | tar -xzf - -C public"
+    buildCommand: "mkdir -p public && cp -R index.html src styles public/"
     staticPublishPath: public
     autoDeployTrigger: commit
