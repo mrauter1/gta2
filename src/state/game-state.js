@@ -284,7 +284,7 @@ export function buildSession(districtId) {
       cash: 2450,
       heat: 1,
       alertedHeatLevel: 1,
-      cameraYaw: 0.34,
+      cameraYaw: 0.15,
       speedDisplay: 0,
       routePulseTimer: 1.8,
       homePingTimer: 0,

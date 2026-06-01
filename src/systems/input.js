@@ -1,4 +1,3 @@
-import { clamp } from "../utils/math.js";
 import { detectTouchMode } from "../state/game-state.js";
 
 const GAMEPLAY_KEY_CODES = new Set([
@@ -30,11 +29,8 @@ function updateLookYaw(state, deltaX, factor) {
     return;
   }
   const invert = state.settings.invertLook ? -1 : 1;
-  state.session.ui.cameraYaw = clamp(
-    state.session.ui.cameraYaw + deltaX * factor * state.settings.sensitivity * invert,
-    -1.15,
-    1.15
-  );
+  const nextYaw = state.session.ui.cameraYaw + deltaX * factor * state.settings.sensitivity * invert;
+  state.session.ui.cameraYaw = Math.atan2(Math.sin(nextYaw), Math.cos(nextYaw));
 }
 
 function safeSetPointerCapture(element, pointerId) {
@@ -50,6 +46,7 @@ function resetLookDrag(state) {
   state.lookDrag.pointerId = null;
   state.lookDrag.source = null;
   state.lookDrag.startX = 0;
+  state.lookDrag.lastX = 0;
   state.lookDrag.maxDelta = 0;
 }
 
@@ -190,6 +187,10 @@ export function createInputSystem({ state, elements, callbacks }) {
     if (state.screen !== "game" || state.activePanel) {
       return;
     }
+    if (event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
     callbacks.armAudio();
     state.lookDrag.active = true;
     state.lookDrag.source = "scene";
@@ -204,6 +205,11 @@ export function createInputSystem({ state, elements, callbacks }) {
     if (!state.lookDrag.active || state.lookDrag.source !== "scene" || state.lookDrag.pointerId !== event.pointerId) {
       return;
     }
+    if (event.pointerType === "mouse" && event.buttons === 0) {
+      resetLookDrag(state);
+      return;
+    }
+    event.preventDefault();
     const delta = event.clientX - state.lookDrag.lastX;
     state.lookDrag.lastX = event.clientX;
     state.lookDrag.maxDelta = Math.max(state.lookDrag.maxDelta, Math.abs(event.clientX - state.lookDrag.startX));
@@ -214,6 +220,8 @@ export function createInputSystem({ state, elements, callbacks }) {
   elements.sceneCanvas.addEventListener("pointerup", releaseLook);
   elements.sceneCanvas.addEventListener("pointercancel", releaseLook);
   elements.sceneCanvas.addEventListener("lostpointercapture", releaseLook);
+  window.addEventListener("pointerup", releaseLook);
+  window.addEventListener("pointercancel", releaseLook);
 
   elements.lookPad.addEventListener("pointerdown", (event) => {
     callbacks.armAudio();

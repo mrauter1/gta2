@@ -31,8 +31,12 @@ function normalizeAngle(angle) {
   return normalized;
 }
 
+function getViewHeading(session) {
+  return normalizeAngle(session.ui.cameraYaw);
+}
+
 function getAimAngle(session) {
-  return normalizeAngle(session.player.angle + session.ui.cameraYaw * 0.96);
+  return getViewHeading(session);
 }
 
 function createShotResult(overrides = {}) {
@@ -1056,6 +1060,7 @@ function updateRespawnState(state, events, deltaSeconds) {
   state.session.player.x = safePlayerSpawn.x;
   state.session.player.y = safePlayerSpawn.y;
   state.session.player.angle = 0.15;
+  state.session.ui.cameraYaw = state.session.player.angle;
   state.session.player.health = 100;
   state.session.player.stamina = 88;
   state.session.mode = "foot";
@@ -1321,6 +1326,7 @@ export function toggleVehicle(state) {
     player.x = exitPoint.x;
     player.y = exitPoint.y;
     player.angle = vehicle.angle;
+    state.session.ui.cameraYaw = vehicle.angle;
     vehicle.speed = 0;
     return {
       toast: `Exited ${vehicle.label.toLowerCase()}`,
@@ -1496,7 +1502,7 @@ export function applySimulation(state, deltaSeconds) {
     ];
 
     if (magnitude > 0) {
-      const viewYaw = session.ui.cameraYaw * 0.35;
+      const viewYaw = getViewHeading(session);
       const inputX = (Math.cos(viewYaw) * forward - Math.sin(viewYaw) * strafe) / magnitude;
       const inputY = (Math.sin(viewYaw) * forward + Math.cos(viewYaw) * strafe) / magnitude;
       const desiredX = player.x + inputX * moveSpeed * deltaSeconds;

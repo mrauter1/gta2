@@ -532,6 +532,10 @@ function angleDistance(a, b) {
   return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 }
 
+function movementAngle(start, end) {
+  return Math.atan2((end.y || 0) - (start.y || 0), (end.x || 0) - (start.x || 0));
+}
+
 async function collectRuntimeConstraintEvidence() {
   const entrypointExists = await fileExists(entrypointPath);
   const rendererPath = path.join(appSourceRoot, "render/three-world.js");
@@ -1376,22 +1380,69 @@ async function runDesktopFlow(client, report, baseUrl) {
     keyboardCardinalStart.session.player
   );
 
-  await prepareFootRecoveryState();
-  const angledYaw = 0.34;
-  await client.evaluate(`
-    (() => {
-      const state = window.__blockCityDebug.getState();
-      state.session.ui.cameraYaw = ${angledYaw};
-      state.session.player.angle = 0;
-      window.__blockCityDebug.render();
-      return true;
-    })()
-  `);
-  const angledForwardStart = await getStateSnapshot(client);
+  async function prepareDirectionalProbe(viewHeading) {
+    await client.evaluate(`
+      (() => {
+        const state = window.__blockCityDebug.getState();
+        state.screen = "game";
+        state.activePanel = null;
+        state.session.mode = "foot";
+        state.session.player.x = 500;
+        state.session.player.y = 540;
+        state.session.player.angle = ${viewHeading};
+        state.session.player.stamina = 100;
+        state.session.vehicle.x = 880;
+        state.session.vehicle.y = 220;
+        state.session.vehicle.speed = 0;
+        state.session.ui.cameraYaw = ${viewHeading};
+        state.session.combat.equipped = false;
+        state.keyboard = {};
+        Object.keys(state.touchInput).forEach((control) => {
+          state.touchInput[control] = false;
+        });
+        window.__blockCityDebug.render();
+        return true;
+      })()
+    `);
+    await sleep(80);
+    return getStateSnapshot(client);
+  }
+
+  const viewHeading = 0.62;
+  const directionResults = [];
+  for (const probe of [
+    { control: "W", code: "KeyW", key: "w", keyCode: 87, expectedAngle: viewHeading },
+    { control: "D", code: "KeyD", key: "d", keyCode: 68, expectedAngle: viewHeading + Math.PI * 0.5 },
+    { control: "S", code: "KeyS", key: "s", keyCode: 83, expectedAngle: viewHeading + Math.PI },
+    { control: "A", code: "KeyA", key: "a", keyCode: 65, expectedAngle: viewHeading - Math.PI * 0.5 },
+  ]) {
+    const start = await prepareDirectionalProbe(viewHeading);
+    await keyHold(client, probe.code, probe.key, probe.keyCode, 450);
+    await sleep(120);
+    const end = await getStateSnapshot(client);
+    const distance = planarDistance(end.session.player, start.session.player);
+    const actualAngle = movementAngle(start.session.player, end.session.player);
+    directionResults.push({
+      control: probe.control,
+      expectedAngle: Number(Math.atan2(Math.sin(probe.expectedAngle), Math.cos(probe.expectedAngle)).toFixed(3)),
+      actualAngle: Number(actualAngle.toFixed(3)),
+      angleError: Number(angleDistance(actualAngle, probe.expectedAngle).toFixed(3)),
+      distance: Number(distance.toFixed(2)),
+      pass: distance > 5 && angleDistance(actualAngle, probe.expectedAngle) < 0.18,
+    });
+  }
+  await verify(
+    report,
+    "WASD on-foot movement follows the current view axes",
+    directionResults.every((result) => result.pass),
+    directionResults
+  );
+
+  const angledForwardStart = await prepareDirectionalProbe(viewHeading);
   await keyHold(client, "KeyW", "w", 87, 450);
   await sleep(120);
   const angledForwardEnd = await getStateSnapshot(client);
-  const expectedForwardAngle = angledYaw * 0.35;
+  const expectedForwardAngle = viewHeading;
   await verify(
     report,
     "Held forward movement keeps avatar heading stable with camera yaw",
@@ -1536,6 +1587,44 @@ async function runDesktopFlow(client, report, baseUrl) {
     "Desktop mouse look changes camera yaw",
     Math.abs(afterYaw - beforeYaw) > 0.04,
     { beforeYaw, afterYaw }
+  );
+
+  await prepareDirectionalProbe(0.74);
+  await client.evaluate(`
+    (() => {
+      const state = window.__blockCityDebug.getState();
+      state.session.combat.equipped = true;
+      state.session.combat.ammoInClip = state.session.combat.clipSize;
+      state.session.combat.fireCooldown = 0;
+      state.session.player.angle = 0;
+      window.__blockCityDebug.render();
+      return true;
+    })()
+  `);
+  await mouseClick(client, "#sceneCanvas");
+  await sleep(180);
+  const postClickAimState = await getStateSnapshot(client);
+  const postClickIdleState = await client.evaluate(`
+    (async () => {
+      const { applySimulation } = await import("./src/systems/gameplay.js");
+      const state = window.__blockCityDebug.getState();
+      for (let step = 0; step < 100; step += 1) {
+        applySimulation(state, 0.016);
+      }
+      window.__blockCityDebug.render();
+      return window.__blockCityDebug.getState();
+    })()
+  `);
+  await verify(
+    report,
+    "Desktop scene click does not start continuous avatar rotation",
+    angleDistance(postClickAimState.session.player.angle, 0.74) < 0.08
+      && angleDistance(postClickIdleState.session.player.angle, postClickAimState.session.player.angle) < 0.02,
+    {
+      cameraYaw: postClickIdleState.session.ui.cameraYaw,
+      afterClickAngle: Number(postClickAimState.session.player.angle.toFixed(3)),
+      afterIdleAngle: Number(postClickIdleState.session.player.angle.toFixed(3)),
+    }
   );
 
   const playerCollisionState = await client.evaluate(`

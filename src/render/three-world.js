@@ -10,6 +10,10 @@ function mapToWorld(point, height = 0) {
   return new THREE.Vector3(point.x - WORLD_OFFSET, height, point.y - WORLD_OFFSET);
 }
 
+function normalizeAngle(angle) {
+  return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
 function disposeObject(root) {
   root.traverse((child) => {
     if (child.geometry) {
@@ -1057,23 +1061,27 @@ export function createWorldRenderer(canvas) {
       actor.mesh.position.y = 0.5 + Math.abs(Math.sin(elapsed * 5 + index)) * 0.4;
     });
 
-    const actorPoint = state.session.mode === "vehicle" ? state.session.vehicle : state.session.player;
-    const actorHeading = state.session.mode === "vehicle" ? state.session.vehicle.angle : state.session.player.angle;
-    const actorWorld = mapToWorld(actorPoint, state.session.mode === "vehicle" ? 8 : 9);
-    const followDistance = state.session.mode === "vehicle" ? 148 : 132;
-    const followHeight = state.session.mode === "vehicle" ? 58 : 38;
-    const followYaw = actorHeading + Math.PI + state.session.ui.cameraYaw * 0.82 - 0.7;
-    const targetLead = state.session.mode === "vehicle" ? 52 : 30;
-    const targetHeight = state.session.mode === "vehicle" ? 16 : 13;
+    const inVehicle = state.session.mode === "vehicle";
+    const actorPoint = inVehicle ? state.session.vehicle : state.session.player;
+    const actorHeading = inVehicle ? state.session.vehicle.angle : state.session.player.angle;
+    const viewHeading = inVehicle
+      ? actorHeading + state.session.ui.cameraYaw * 0.82 - 0.7
+      : normalizeAngle(state.session.ui.cameraYaw);
+    const actorWorld = mapToWorld(actorPoint, inVehicle ? 8 : 9);
+    const followDistance = inVehicle ? 148 : 132;
+    const followHeight = inVehicle ? 58 : 38;
+    const followYaw = viewHeading + Math.PI;
+    const targetLead = inVehicle ? 52 : 30;
+    const targetHeight = inVehicle ? 16 : 13;
     const desiredPosition = new THREE.Vector3(
       actorWorld.x + Math.cos(followYaw) * followDistance,
       followHeight + (state.session.failureState ? 16 : 0),
       actorWorld.z + Math.sin(followYaw) * followDistance
     );
     const desiredTarget = new THREE.Vector3(
-      actorWorld.x + Math.cos(actorHeading) * targetLead,
+      actorWorld.x + Math.cos(viewHeading) * targetLead,
       targetHeight,
-      actorWorld.z + Math.sin(actorHeading) * targetLead
+      actorWorld.z + Math.sin(viewHeading) * targetLead
     );
 
     cameraPosition.x = damp(cameraPosition.x, desiredPosition.x, 5.4, deltaSeconds);
