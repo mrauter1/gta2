@@ -13,9 +13,7 @@
 ## Comparison Method
 
 - The browser validator served the app locally, captured the rendered page at the reference resolution, and then loaded both images back into the browser for a same-origin canvas comparison.
-- sampled pixels: `393,338`
-- mean absolute channel diff: `42.55`
-- approximate match ratio: `0.4243`
+- Numeric image comparison was skipped because the reference asset was unavailable during the run.
 - The numeric diff was followed by a structured manual review of HUD placement, typography, spacing, color language, world framing, and player-to-vehicle readability.
 
 ## Layout Comparison

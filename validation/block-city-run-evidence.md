@@ -3,9 +3,9 @@
 ## Commands And Exit Status
 
 - Command run: `bash validation/block-city-run-validation.sh`
-- Base URL served during the run: `http://127.0.0.1:8123/`
-- Validation start: `2026-06-01T10:57:38.127Z`
-- Validation finish: `2026-06-01T11:00:15.419Z`
+- Base URL served during the run: `https://gta2.onrender.com/`
+- Validation start: `2026-06-01T17:49:58.829Z`
+- Validation finish: `2026-06-01T17:52:36.676Z`
 - Exit status: `0`
 - Structured report: [validation/artifacts/block-city-run-report.json](/home/rauter/code/gta2/validation/artifacts/block-city-run-report.json)
 - Browser log: [validation/logs/block-city-run-validation.log](/home/rauter/code/gta2/validation/logs/block-city-run-validation.log)
@@ -55,9 +55,7 @@
 ## Reference Comparison Summary
 
 - Full write-up: [validation/reference-comparison.md](/home/rauter/code/gta2/validation/reference-comparison.md)
-  - sampled pixels: `393,338`
-  - mean absolute channel diff: `42.55`
-  - approximate match ratio: `0.4243`
+  - numeric comparison skipped
 - Judgment: close on HUD structure, sunset mood, and first-minute readability; still looser than the reference on exact curbside vehicle framing and world-detail density.
 
 ## Console And Runtime Errors

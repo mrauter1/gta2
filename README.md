@@ -122,29 +122,40 @@ The runtime stays modular rather than packing the whole game into one file.
 Latest audited command:
 
 ```bash
-bash validation/block-city-run-validation.sh
+node validation/block-city-run-validation.mjs --base-url=https://gta2.onrender.com/
 ```
 
 Latest successful run:
 
-- started: `2026-06-01T06:37:11.912Z`
-- finished: `2026-06-01T06:38:56.049Z`
+- started: `2026-06-01T17:49:58.829Z`
+- finished: `2026-06-01T17:52:36.676Z`
 - exit status: `0`
 - generated report: `validation/artifacts/block-city-run-report.json`
 - generated screenshots:
   - `validation/screenshots/desktop-district-select.png`
+  - `validation/screenshots/desktop-spawn-intro.png`
+  - `validation/screenshots/desktop-combat-feedback.png`
+  - `validation/screenshots/desktop-heat-alert.png`
   - `validation/screenshots/desktop-on-foot-reference.png`
+  - `validation/screenshots/desktop-boundary-impact.png`
   - `validation/screenshots/desktop-in-vehicle-hud.png`
+  - `validation/screenshots/desktop-mission-objective.png`
+  - `validation/screenshots/desktop-respawn-recovery.png`
+  - `validation/screenshots/mobile-landscape-spawn-intro.png`
   - `validation/screenshots/mobile-landscape-on-foot.png`
+  - `validation/screenshots/mobile-landscape-combat-feedback.png`
+  - `validation/screenshots/mobile-landscape-mission-objective.png`
+  - `validation/screenshots/mobile-landscape-heat-alert.png`
   - `validation/screenshots/mobile-landscape-vehicle.png`
+  - `validation/screenshots/mobile-landscape-boundary-impact.png`
+  - `validation/screenshots/mobile-landscape-respawn-recovery.png`
   - `validation/screenshots/mobile-portrait-sanity.png`
-- browser checks passed: `53`
-- reference comparison: skipped for the Render-style packaged output because `gta.png` is a local-only validation reference image
+- browser checks passed: `81`
+- reference comparison: skipped for the live Render run because `gta.png` is a local-only validation reference image
 
 Supporting logs:
 
 - `validation/logs/block-city-run-validation.log`
-- `validation/logs/block-city-http-server.log`
 
 Generated validation artifacts, screenshots, logs, the local reference image, and the optional vendored Three.js file are ignored by git to keep the deployed repository small.
 
