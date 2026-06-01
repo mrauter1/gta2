@@ -127,8 +127,8 @@ node validation/block-city-run-validation.mjs --base-url=https://gta2.onrender.c
 
 Latest successful run:
 
-- started: `2026-06-01T18:06:57.562Z`
-- finished: `2026-06-01T18:10:08.249Z`
+- started: `2026-06-01T18:28:24.627Z`
+- finished: `2026-06-01T18:31:29.654Z`
 - exit status: `0`
 - generated report: `validation/artifacts/block-city-run-report.json`
 - generated screenshots:
@@ -150,7 +150,7 @@ Latest successful run:
   - `validation/screenshots/mobile-landscape-boundary-impact.png`
   - `validation/screenshots/mobile-landscape-respawn-recovery.png`
   - `validation/screenshots/mobile-portrait-sanity.png`
-- browser checks passed: `82`
+- browser checks passed: `84`
 - reference comparison: skipped for the live Render run because `gta.png` is a local-only validation reference image
 
 Supporting logs:
