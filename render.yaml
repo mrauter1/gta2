@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: gta2
+    runtime: static
+    repo: https://github.com/mrauter1/gta2
+    branch: main
+    buildCommand: "mkdir -p public && cat deploy-site.tgz.b64.part-* | base64 -d | tar -xzf - -C public"
+    staticPublishPath: public
+    autoDeployTrigger: commit
