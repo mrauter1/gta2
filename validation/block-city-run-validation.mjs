@@ -528,6 +528,10 @@ function planarDistance(a, b) {
   return Math.hypot((a.x || 0) - (b.x || 0), (a.y || 0) - (b.y || 0));
 }
 
+function angleDistance(a, b) {
+  return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+}
+
 async function collectRuntimeConstraintEvidence() {
   const entrypointExists = await fileExists(entrypointPath);
   const rendererPath = path.join(appSourceRoot, "render/three-world.js");
@@ -1370,6 +1374,34 @@ async function runDesktopFlow(client, report, baseUrl) {
   const keyboardCardinalDistance = planarDistance(
     keyboardCardinalEnd.session.player,
     keyboardCardinalStart.session.player
+  );
+
+  await prepareFootRecoveryState();
+  const angledYaw = 0.34;
+  await client.evaluate(`
+    (() => {
+      const state = window.__blockCityDebug.getState();
+      state.session.ui.cameraYaw = ${angledYaw};
+      state.session.player.angle = 0;
+      window.__blockCityDebug.render();
+      return true;
+    })()
+  `);
+  const angledForwardStart = await getStateSnapshot(client);
+  await keyHold(client, "KeyW", "w", 87, 450);
+  await sleep(120);
+  const angledForwardEnd = await getStateSnapshot(client);
+  const expectedForwardAngle = angledYaw * 0.35;
+  await verify(
+    report,
+    "Held forward movement keeps avatar heading stable with camera yaw",
+    planarDistance(angledForwardEnd.session.player, angledForwardStart.session.player) > 5
+      && angleDistance(angledForwardEnd.session.player.angle, expectedForwardAngle) < 0.08,
+    {
+      expectedAngle: Number(expectedForwardAngle.toFixed(3)),
+      actualAngle: Number(angledForwardEnd.session.player.angle.toFixed(3)),
+      distance: Number(planarDistance(angledForwardEnd.session.player, angledForwardStart.session.player).toFixed(2)),
+    }
   );
 
   const diagonalStart = await prepareFootRecoveryState();

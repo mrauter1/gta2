@@ -1496,7 +1496,7 @@ export function applySimulation(state, deltaSeconds) {
     ];
 
     if (magnitude > 0) {
-      const viewYaw = player.angle + session.ui.cameraYaw * 0.35;
+      const viewYaw = session.ui.cameraYaw * 0.35;
       const inputX = (Math.cos(viewYaw) * forward - Math.sin(viewYaw) * strafe) / magnitude;
       const inputY = (Math.sin(viewYaw) * forward + Math.cos(viewYaw) * strafe) / magnitude;
       const desiredX = player.x + inputX * moveSpeed * deltaSeconds;
