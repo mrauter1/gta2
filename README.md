@@ -2,6 +2,6 @@
 
 Browser-only Three.js city sandbox deployed as a Render static site.
 
-Render builds this repository by concatenating `deploy-site.tgz.b64.part-*`, unpacking the static app into `public/`, and serving that directory. The source bundle contains `index.html`, `styles/`, and `src/` from the validated local project.
+The live Render service uses `SITE_TGZ_B64` as a build-time environment variable containing the validated static app archive. Its build command unpacks that archive into `public/`, and Render serves `public/`.
 
-Latest local Render-style validation passed 53 browser checks on 2026-06-01, using the unpacked `public/` output.
+Latest live Render validation passed 53 browser checks on 2026-06-01 against `https://gta2.onrender.com/`.
