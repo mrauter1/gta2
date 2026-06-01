@@ -4,8 +4,8 @@
 
 - Command run: `bash validation/block-city-run-validation.sh`
 - Base URL served during the run: `https://gta2.onrender.com/`
-- Validation start: `2026-06-01T18:28:24.627Z`
-- Validation finish: `2026-06-01T18:31:29.654Z`
+- Validation start: `2026-06-01T19:09:20.546Z`
+- Validation finish: `2026-06-01T19:12:52.918Z`
 - Exit status: `0`
 - Structured report: [validation/artifacts/block-city-run-report.json](/home/rauter/code/gta2/validation/artifacts/block-city-run-report.json)
 - Browser log: [validation/logs/block-city-run-validation.log](/home/rauter/code/gta2/validation/logs/block-city-run-validation.log)
@@ -47,7 +47,7 @@
 
 ## Browser Audit Coverage
 
-- Checks passed: `84`
+- Checks passed: `88`
 - Checks failed: `0`
 - Verified interaction families: menu and district navigation, settings persistence and restore-default flows, keyboard and arrow-key foot movement, key-release and focus-resilience behavior, combat draw or fire or reload flows, HUD drawer focus cleanup, quickbar actions, ride entry and exit, vehicle driving, blocker and boundary collisions, mission accept and completion, heat escalation and decay, respawn recovery, touch on-foot and vehicle controls, portrait sanity, and page-level console hygiene.
 - Newly explicit proof in this run: player-versus-blocker collision, vehicle-versus-blocker collision, safe boundary vehicle exit placement, spawn-scale sanity, static entrypoint integrity, Three.js runtime continuity, and a shipped-source originality scan.
